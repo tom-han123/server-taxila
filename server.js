@@ -20,6 +20,7 @@ app.use(express.json());
 app.use("/api/user", require("./user/routes/userRoute"));
 app.use("/api/tutorial", require("./tutorial/routes/tutoRoutes"));
 app.use("/api/review", require("./review/routes/reviewRoutes"));
+app.use("/api/quiz", require("./quiz/routes/quizRoute"));
 app.use(errorhandler);
 
 

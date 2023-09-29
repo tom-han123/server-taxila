@@ -56,7 +56,45 @@ const getTuto = asyncHandler(async (req, res, next) => {
             if (keyword) {
                 q["name"] = RegExp(".*" + keyword + ".*");
             }
-            data = await Tuto.find(q).populate("tag").populate("language").populate({path:"createdbyuser", select:"name"}).sort({ _id: 1 })
+            data = await Tuto.aggregate([
+                {
+                    $lookup:{
+                        from: "reviews",
+                        localField:"_id",
+                        foreignField:"tuto",
+                        as:"reviews"
+                    }
+                },
+                {
+                    $lookup:{
+                        from:"languages",
+                        localField:"language",
+                        foreignField:"_id",
+                        as:"languages"
+                    }
+                },
+                {
+                    $unwind:"$languages",
+                },
+                {
+                    $project: {
+                      name: 1,
+                      description: 1,
+                      tag:1,
+                      language:'$languages',
+                      videopath:1,
+                      creationtime:1,
+                      createdbyuser:1,
+                      rating: { $avg: '$reviews.star' },
+                    },
+                  },
+                
+
+            ]);
+            
+            if (keyword){
+                data = data.filter(item =>item.name.includes(keyword)=== true || item.tag.includes(keyword)===true)
+            }
             count = data.length;
             pgcount = parseInt(count / limit);
             if (count % limit) {
@@ -73,6 +111,7 @@ const getTuto = asyncHandler(async (req, res, next) => {
 const updateTuto = asyncHandler( async (req, res, next) =>{
     try{
         const id = req.body.id;
+        
         var obj = {}
         var t = await Tuto.findById(id);
         if (t.createdbyuser !== req.user.userid && req.user.role !== "super"){
@@ -82,8 +121,7 @@ const updateTuto = asyncHandler( async (req, res, next) =>{
         Object.keys(req.body).forEach(k => {
             obj[k] = (req.body)[k];
         });
-        if (req.file.path) {
-            
+        if (req.file) {
             if (t.videopath){
                 fs.unlink(t.videopath, (err) => {
                     if (err) {
